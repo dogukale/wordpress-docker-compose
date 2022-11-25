@@ -1,0 +1,77 @@
+version: '3.9'
+
+networks:
+  wordpress:
+
+services:
+    site:
+        build:
+            context: .
+            dockerfile: nginx.dockerfile
+        container_name: ${APP_NAME}-nginx
+        ports:
+            - 80:80
+            - 443:443
+        environment:
+            - WEB_DOMAIN=${APP_DOMAIN}
+        volumes:
+            - ./wordpress:/var/www/html:rw,cached
+        depends_on:
+            - php
+            - mysql
+        networks:
+            - wordpress
+
+    mysql:
+        image: mysql:latest
+        container_name: ${APP_NAME}-mysql
+        restart: always
+        ports:
+            - 3306:3306
+        environment:
+            MYSQL_DATABASE: ${DB_NAME}
+            MYSQL_USER: ${DB_USER}
+            MYSQL_PASSWORD: ${DB_PASSWORD}
+            MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+            SERVICE_TAGS: dev
+            SERVICE_NAME: mysql
+        volumes:
+            - ./mysql:/var/lib/mysql
+        networks:
+            - wordpress
+
+    # phpmyadmin:
+    #     image: phpmyadmin/phpmyadmin
+    #     container_name: ${APP_NAME}-phpmyadmin
+    #     restart: always
+    #     ports:
+    #         - 8082:80
+    #     environment:
+    #         PMA_HOST: ${DB_HOST}
+    #         PMA_PORT: 3306
+    #         MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    #     depends_on:
+    #         - mysql
+    #     links:
+    #         - mysql:mysql
+
+    php:
+        build:
+            context: .
+            dockerfile: php.dockerfile
+        container_name: ${APP_NAME}-php
+        volumes:
+            - ./wordpress:/var/www/html:rw,cached
+        networks:
+            - wordpress
+    
+    wp:
+        build:
+            context: .
+            dockerfile: php.dockerfile
+        container_name: ${APP_NAME}-wp
+        volumes:
+            - ./wordpress:/var/www/html:rw,cached
+        entrypoint: ['wp', '--allow-root']
+        networks:
+            - wordpress
